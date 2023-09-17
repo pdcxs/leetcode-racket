@@ -5,7 +5,8 @@
 (provide
  rlist-cons
  rlist-lookup
- rlist-update)
+ rlist-update
+ rlist-length)
 
 ; First we need a binary tree
 ; a binary tree can be
@@ -156,6 +157,11 @@
              #f (rlist-update
                  (rest rlst) index val))))))
 
+(define (rlist-length rlst)
+  (foldl (λ (x acc)
+           (if x (+ (tree-size x) acc) acc))
+         0 rlst))
+
 ; =========== Tests ===================
 (require rackunit)
 
@@ -176,3 +182,7 @@
  (rlist-lookup
   (rlist-update (foldr rlist-cons '() (range 10)) 9 100)
   2) 2)
+
+(check-equal?
+ (rlist-length (foldr rlist-cons '() (range 100)))
+ 100)
