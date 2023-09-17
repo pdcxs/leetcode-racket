@@ -1,14 +1,39 @@
 #lang racket
 
 (provide
+ make-biheap
  biheap-insert
  biheap-merge
  biheap-min
  biheap-rm-min
- biheap-size)
+ biheap-size
+ biheap-empty?)
 
 ; Binomial Heap (biheap)
 ; Also known as Priority Queue
+
+; biheap is the following constructor:
+; (cons
+;  (list of trees)
+;  (leq compare function))
+
+; biheap constructor
+; First is biheap contents
+; Second is the compare function
+(define (make-biheap [leq <=])
+  (cons '() leq))
+
+; Define biheap getters
+(define biheap-content car)
+(define biheap-leq cdr)
+
+(define (biheap-empty? bihp)
+  (null? (biheap-content bihp)))
+
+; get the rest of a bihp
+(define (biheap-rest bihp)
+  (cons (rest (biheap-content bihp))
+        (biheap-leq bihp)))
 
 ; We also need a tree first
 ; A tree is a node with the
@@ -30,7 +55,7 @@
 
 ; Basic Operation: Link two trees
 ; with same ranks
-(define (link tree1 tree2 [leq <=])
+(define (link tree1 tree2 leq)
   (let ([r (node-rank tree1)]
         [x1 (node-root tree1)]
         [x2 (node-root tree2)])
@@ -43,7 +68,7 @@
          (cons tree1 (node-chld tree2))))))
 
 ; insert a tree into a heap
-(define (insert-tree t ts [leq <=])
+(define (insert-tree t ts leq)
   (if (null? ts)
       (list t)
       (let ([h (first ts)])
@@ -53,73 +78,134 @@
                          (rest ts) leq)))))
 
 ; insert a value into a binomial heap
-(define (biheap-insert x ts [leq <=])
-  (insert-tree (make-node 0 x '()) ts leq))
+(define (biheap-insert x bihp)
+  (let ([ts (biheap-content bihp)]
+        [leq (biheap-leq bihp)])
+    (cons
+     (insert-tree
+      (make-node 0 x '()) ts leq)
+     leq)))
 
 ; merge two biheaps
-(define (biheap-merge ts1 ts2 [leq <=])
-  (cond [(null? ts1) ts2]
-        [(null? ts2) ts1]
+(define (biheap-merge bihp1 bihp2)
+  (define ts1 (biheap-content bihp1))
+  (define ts2 (biheap-content bihp2))
+  (define leq (biheap-leq bihp1))
+  (cond [(null? ts1) bihp2]
+        [(null? ts2) bihp1]
         [(< (node-rank (first ts1))
             (node-rank (first ts2)))
-         (cons (first ts1)
-               (biheap-merge
-                (rest ts1) ts2 leq))]
+         (cons
+          (cons (first ts1)
+                (biheap-content
+                 (biheap-merge
+                  (biheap-rest bihp1) bihp2)))
+          leq)]
         [(< (node-rank (first ts2))
             (node-rank (first ts1)))
-         (cons (first ts2)
-               (biheap-merge
-                ts1 (rest ts2) leq))]
+         (cons
+          (cons
+           (first ts2)
+           (biheap-content
+            (biheap-merge
+             bihp1 (biheap-rest bihp2))))
+          leq)]
         [else
-         (insert-tree
-          (link (first ts1)
-                (first ts2) leq)
-          (biheap-merge (rest ts1) (rest ts2) leq)
+         (cons
+          (insert-tree
+           (link (first ts1)
+                 (first ts2) leq)
+           (biheap-content
+            (biheap-merge
+             (biheap-rest bihp1)
+             (biheap-rest bihp2))) leq)
           leq)]))
 
 ; find minimum element in a biheap
-(define (biheap-min ts [leq <=])
-  (if (null? (rest ts)) ; only has one tree
-      (node-root (first ts))
-      (let ([x (node-root (first ts))]
-            [y (biheap-min (rest ts) leq)])
-        (if (leq x y) x y))))
+(define (biheap-min bihp)
+  (define ts (biheap-content bihp))
+  (define leq (biheap-leq bihp))
+  (if (null? ts)
+      (error "Error in biheap-min: Empty biheap.")
+      (if (null? (rest ts)) ; only has one tree
+          (node-root (first ts))
+          (let ([x (node-root (first ts))]
+                [y (biheap-min (biheap-rest bihp))])
+            (if (leq x y) x y)))))
 
 ; delete minimum element in a biheap
-(define (biheap-rm-min ts [leq <=])
+(define (biheap-rm-min bihp)
+  (define ts (biheap-content bihp))
+  (define leq (biheap-leq bihp))
+  ; get-min returns a pair:
+  ; (cons t ts)
+  ; where t is the tree has minimum element
+  ; ts is the trees without t.
   (define (get-min ts)
-    (if (null? (rest ts)) ts
-        (let ([r (get-min (rest ts))])
-          (if (leq (node-root (first ts))
-                   (node-root (first r)))
-              ts (cons (first r)
-                       (cons (first ts)
-                             (rest r)))))))
+    (if
+     (null? ts)
+     (error "Error in biheap-rm-min: Empty biheap.")
+     (if (null? (rest ts))
+         ; When ts is singleton
+         ; (cons (first ts) '()) is just ts
+         ts
+         (let ([r (get-min (rest ts))])
+           ; for clarity,
+           ; I use `first` on list and `car` on pair.
+           ; But they are actually the same function.
+           (if (leq (node-root (first ts))
+                    (node-root (car r)))
+               ; (cons (first ts) (rest ts)) is just ts
+               ts
+               (cons (car r)
+                     ; Second of the pair is a list
+                     (cons (first ts)
+                           (cdr r))))))))
   (let ([r (get-min ts)])
-    (biheap-merge (reverse (node-chld (first r)))
-                  (rest r) leq)))
+    (biheap-merge
+     (cons (reverse (node-chld (car r))) leq)
+     (cons (rest r) leq))))
 
 ; biheap size
-(define (biheap-size ts)
+(define (biheap-size bihp)
   (foldl (λ (t acc)
            (+ acc
               (arithmetic-shift
-               1 (node-rank t)))) 0 ts))
+               1 (node-rank t))))
+         0 (biheap-content bihp)))
 
 ; ============= Tests =================
 (require rackunit)
 
 (check-equal?
  (biheap-min
-  (foldr biheap-insert '() (range 100)))
+  (foldr biheap-insert (make-biheap) (range 100)))
  0)
 
 (check-equal?
  (biheap-min
   (foldr
    (λ (x acc)
-     (biheap-insert x acc >=))
-   '() (range 100)) >=)
+     (biheap-insert x acc))
+   (make-biheap >=) (range 100)))
+ 99)
+
+(check-equal?
+ (biheap-min
+  (biheap-merge
+   (foldr biheap-insert (make-biheap)
+          (range 50 100))
+   (foldr biheap-insert (make-biheap)
+          (range 50))))
+ 0)
+
+(check-equal?
+ (biheap-min
+  (biheap-merge
+   (foldr biheap-insert (make-biheap >=)
+          (range 50 100))
+   (foldr biheap-insert (make-biheap >=)
+          (range 50))))
  99)
 
 (check-equal?
@@ -127,6 +213,6 @@
   (biheap-rm-min
    (foldr
     (λ (x acc)
-      (biheap-insert x acc >=))
-    '() (range 100)) >=) >=)
+      (biheap-insert x acc))
+    (make-biheap >=) (range 100))))
  98)
