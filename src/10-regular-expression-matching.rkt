@@ -11,23 +11,20 @@
 (define (is-match s p)
   (is-match-lst
    (string->list s)
-   (string->list p)
-   (mem is-match-lst)))
+   (string->list p)))
 
 ; Member function result in h
 ; It's hard to member the compute results
 ; in a purely functional way. (But it's possible.
 ; See `memoize` package of Haskell).
 ; To clarify the idea, I use mutable variable here.
-; But with some modification, I avoid using
-; global variable to record result.
 (define (mem f)
   (let ([memoized (make-hash)])
-    (λ (a b mf)
+    (λ (a b)
       (let ([key (cons a b)])
         (if (hash-has-key? memoized key)
             (hash-ref memoized key)
-            (let ([val (f a b mf)])
+            (let ([val (f a b)])
               (hash-set! memoized key val)
               val))))))
 
@@ -38,7 +35,7 @@
 ; (is-match-lst
 ;  (string->list s) (string->list p) h)
 ; (is-match s p)
-(define (is-match-lst s p mem-f)
+(define (is-match-lst s p)
   (cond ; if the pattern is a null string
     ; the only matched case is
     ; the source string is also a null string
@@ -60,9 +57,9 @@
           (match-char
            (first s)
            (first p))
-          (mem-f
+          (mem-is-match-lst
            (rest s)
-           (rest p) mem-f))]
+           (rest p)))]
     ; Here, the pattern string are longer than 1
     ; and the second char of pattern string is '*'.
     ; which means here is the repeat pattern
@@ -86,20 +83,23 @@
        (or
         ; 1. The first char of the source string
         ;    consumes the repeat pattern, or
-        (mem-f
-         (rest s) (drop p 2) mem-f)
+        (mem-is-match-lst
+         (rest s) (drop p 2))
         ; 2. The first char of the source string
         ;    doesn't consume the repeat pattern.
-        (mem-f
-         (rest s) p  mem-f)))
+        (mem-is-match-lst
+         (rest s) p)))
       ; Second condition is that the source string
       ; only consumes the repeat pattern
       ; but the source string remains unchanged,
       ; which means the repeat patten
       ; match a zero-time-repeat of the
       ; corresponding char.
-      (mem-f
-       s (drop p 2) mem-f))]))
+      (mem-is-match-lst
+       s (drop p 2)))]))
+
+; Memoized Version of match-list
+(define mem-is-match-lst (mem is-match-lst))
 
 ; (Char Char) -> Bool
 ; Check whether the source char
