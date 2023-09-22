@@ -6,7 +6,9 @@
  rlist-cons
  rlist-lookup
  rlist-update
- rlist-length)
+ rlist-length
+ rlist-first
+ rlist-rest)
 
 ; First we need a binary tree
 ; a binary tree can be
@@ -82,7 +84,7 @@
   (insert-tree (make-leaf val) rlst))
 
 (define (rlist-first rlist)
-  (car (borrow-tree rlist)))
+  (leaf-val (car (borrow-tree rlist))))
 
 (define (rlist-rest rlist)
   (cdr (borrow-tree rlist)))
