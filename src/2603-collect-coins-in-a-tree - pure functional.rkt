@@ -3,12 +3,15 @@
 ; A graph is needed.
 ; A graph is a hash table
 ; graph[i] is the set of neighbors of node i
-; This is a purely functional method,
-; but it's timeout.
-; I also provide an ugly sucessful method.
+; This is the best purely functional method I've tried,
+; but it's also timeout.
+; I also provide an ugly sucessful method (Fatest).
 ; See: 2603-collect-coins-in-a-tree - mutable.rkt
+; I also provide a trade-off successful method (Successful).
+; See: 2603-collect-coins-in-a-tree - vector.rkt
 
 (require "../libs/dequeue.rkt")
+(require "../libs/rlist.rkt")
 
 (define (build-graph n edges)
   (define (scan edges graph degree)
@@ -18,27 +21,27 @@
             [n2 (second (first edges))]
             [nb1 (set-add (hash-ref graph n1 (set)) n2)]
             [nb2 (set-add (hash-ref graph n2 (set)) n1)]
-            [degree1 (list-add1 degree n1)]
-            [degree2 (list-add1 degree1 n2)]
+            [degree1 (rlist-add1 degree n1)]
+            [degree2 (rlist-add1 degree1 n2)]
             [hash-n1 (hash-set graph n1 nb1)]
             [hash-n2 (hash-set hash-n1 n2 nb2)])
        (scan (rest edges) hash-n2 degree2))))
-  (scan edges (hash) (build-list n (λ (i) 0))))
+  (define degree
+    (foldr rlist-cons '() (build-list n (λ (i) 0))))
+  (scan edges (hash) degree))
 
-(define (list-add1 lst index)
-  (if (= index 0)
-      (cons (add1 (first lst)) (rest lst))
-      (cons (first lst)
-            (list-add1 (rest lst) (sub1 index)))))
+(define (rlist-add1 lst index)
+  (rlist-update
+   lst index
+   (add1 (rlist-lookup lst index))))
 
-(define (list-sub1 lst index)
-  (if (= index 0)
-      (cons (sub1 (first lst)) (rest lst))
-      (cons (first lst)
-            (list-sub1 (rest lst) (sub1 index)))))
+(define (rlist-sub1 lst index)
+  (rlist-update
+   lst index
+   (sub1 (rlist-lookup lst index))))
 
 (define (is-leaf? degree node)
-  (= (list-ref degree node) 1))
+  (= (rlist-lookup degree node) 1))
 
 (define (is-zero-leaf? degree coins node)
   (and (zero? (vector-ref coins node))
@@ -63,7 +66,7 @@
         ; and current degrees of each node
         (values remain degree)
         (let* ([u (dequeue-first queue)]
-               [du (list-sub1 degree u)])
+               [du (rlist-sub1 degree u)])
           ; sub degree of u's neighbors
           (let-values ([(q d)
                         (remove-nb
@@ -77,7 +80,7 @@
     (define (scan nb queue degree)
       (if (set-empty? nb) (values queue degree)
           (let* ([v (set-first nb)]
-                 [dv (list-sub1 degree v)])
+                 [dv (rlist-sub1 degree v)])
             (if (is-zero-leaf? dv coins v)
                 (scan (set-rest nb)
                       (dequeue-push-backward v queue) dv)
@@ -91,11 +94,11 @@
   (define (get-leaves i degree leaves)
     (cond
       [(null? degree) leaves]
-      [(= (first degree) 1)
-       (get-leaves (add1 i) (rest degree)
+      [(= (rlist-first degree) 1)
+       (get-leaves (add1 i) (rlist-rest degree)
                    (cons i leaves))]
       [else
-       (get-leaves (add1 i) (rest degree) leaves)]))
+       (get-leaves (add1 i) (rlist-rest degree) leaves)]))
   ; delete current leaves
   (define (delete-node leaves degree remain)
     (if (null? leaves)
@@ -104,7 +107,7 @@
           (if (is-leaf? degree node)
               (delete-node (rest leaves)
                            (delete-nb
-                            node (list-sub1 degree node))
+                            node (rlist-sub1 degree node))
                            (sub1 remain))
               (delete-node (rest leaves) degree remain)))))
   (define (delete-nb node degree)
@@ -112,7 +115,7 @@
       (if (set-empty? nb) degree
           (scan
            (set-rest nb)
-           (list-sub1 degree (set-first nb)))))
+           (rlist-sub1 degree (set-first nb)))))
     (scan (hash-ref graph node) degree))
   (delete-node
    (get-leaves 0 degree '())
