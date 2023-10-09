@@ -100,16 +100,17 @@
 (define (dequeue-rest dequeue)
   (cond [(dequeue-empty? dequeue)
          (error "Error in dequeue-rest: empty dequeue.")]
-        [(= (dequeue-front-length dequeue) 0)
+        [(zero? (dequeue-front-length dequeue))
          ; rest of a singleton dequeue
          ; is an empty dequeue
          (make-dequeue)]
         [else
-         (list
-          (sub1 (dequeue-front-length dequeue))
-          (stream-tail (dequeue-front dequeue))
-          (dequeue-rear-length dequeue)
-          (dequeue-rear dequeue))]))
+         (check
+          (list
+           (sub1 (dequeue-front-length dequeue))
+           (stream-rest (dequeue-front dequeue))
+           (dequeue-rear-length dequeue)
+           (dequeue-rear dequeue)))]))
 
 (define (dequeue-last dequeue)
   (cond [(dequeue-empty? dequeue)
