@@ -4,9 +4,15 @@
   (string->number
    (substring str 11 13)))
 
-; We can use recursion to avoid
-; creating inter-list.
+; Use count function
 (define (count-seniors details)
+  (count (λ (d) (> (get-age d) 60)) details))
+
+; We can use recursion to avoid
+; creating intermediate list.
+; This function is faster than count function
+; interesting.
+(define (count-seniors-match details)
   (match details
     ['() 0]
     [(cons x xs)
