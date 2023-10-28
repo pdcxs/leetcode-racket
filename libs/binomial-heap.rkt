@@ -7,7 +7,9 @@
  biheap-min
  biheap-rm-min
  biheap-size
- biheap-empty?)
+ biheap-empty?
+ list->biheap
+ biheap->list)
 
 ; Binomial Heap (biheap)
 ; Also known as Priority Queue
@@ -22,6 +24,14 @@
 ; Second is the compare function
 (define (make-biheap [leq <=])
   (cons '() leq))
+
+(define (list->biheap lst [leq <=])
+  (foldl biheap-insert (make-biheap leq) lst))
+
+(define (biheap->list heap)
+  (if (biheap-empty? heap) '()
+      (cons (biheap-min heap)
+            (biheap->list (biheap-rm-min heap)))))
 
 ; Define biheap getters
 (define biheap-content car)
