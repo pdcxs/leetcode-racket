@@ -1,15 +1,24 @@
 #lang racket
 
 (define (find-target-sum-ways nums target)
-  (define input (reverse nums))
+  (define (mem func)
+    (let ([results (make-hash)])
+      (λ (x y)
+        (let ([key (cons x y)])
+          (if (hash-has-key? results key)
+              (hash-ref results key)
+              (let ([val (func x y)])
+                (hash-set! results key val)
+                val))))))
   (define (solve input target)
     (if (null? input)
         (if (zero? target) 1 0)
         (let ([remains (rest input)]
               [current (first input)])
-          (+ (solve remains (+ current target))
-             (solve remains (- current target))))))
-  (solve input target))
+          (+ (mem-solve remains (+ current target))
+             (mem-solve remains (- current target))))))
+  (define mem-solve (mem solve))
+  (solve nums target))
 
 ; ========== Test ============
 (require rackunit)
