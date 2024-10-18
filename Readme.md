@@ -6,6 +6,20 @@ To see how to use the libs, please check the test parts in each file.
 
 Each solution file contains some tests, which is not a part of the solution itself.
 
-Many Problems need to memorize the computation results. I use `set!` to memorize the results. Remembering the results in a purely functional way is possible, which can be found in [memoize](https://hackage.haskell.org/package/memoize) package in Haskell. But to implement that function, I need to use the lazy evaluation heavily which makes this simple idea unclear. As a result, I use mutable hash tables to memorize the computation results.
+Many Problems need to memorize the computation results. Sometimes I use mutable hash tables to memorize the results. In the next stage, I will try to use a purely functional way to implement memoization. Remembering the results in a purely functional way is possible, which can be found in [memoize](https://hackage.haskell.org/package/memoize) package in Haskell. Following is an example:
+
+```racket
+(define (memoize f)
+  (define results (stream-map f (in-naturals)))
+  (lambda (n) (stream-ref results n)))
+
+(define fib
+  (memoize
+   (λ (n)
+     (cond [(= n 0) 1]
+           [(= n 1) 1]
+           [else (+ (fib (- n 1))
+                    (fib (- n 2)))]))))
+```
 
 I'm a newbie to the `racket` programming language. So any suggestions and PR are welcomed.
